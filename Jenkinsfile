@@ -17,7 +17,15 @@ pipeline {
             }
         }
 
-        stage('2. Build Docker Image') {
+        stage('2. Maven Build') {
+            steps {
+                sh """
+                    mvn clean package -DskipTests
+                """
+            }
+        }
+
+        stage('3. Build Docker Image') {
             steps {
                 sh """
                     docker build -t $IMAGE_NAME:$BUILD_NUMBER .
@@ -25,30 +33,30 @@ pipeline {
             }
         }
 
-        stage('3. Trivy Image Scan') {
+        stage('4. Trivy Image Scan') {
             steps {
                 sh """
                     set -e
                     echo "Workspace: \$(pwd)"
                     ls -lah
 
-                    mkdir -p \$HOME/trivy-cache
+                    mkdir -p trivy-cache
 
                     IMAGE=$IMAGE_NAME:$BUILD_NUMBER
 
                     trivy image --scanners vuln \
-                        --cache-dir \$HOME/trivy-cache \
+                        --cache-dir trivy-cache \
                         --no-progress \
                         -f table \
                         -o trivy-image-report.txt \
-                        \$IMAGE
+                        $IMAGE
 
                     ls -lah trivy-image-report.txt || true
                 """
             }
         }
 
-        stage('4. AWS ECR Login') {
+        stage('5. AWS ECR Login') {
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
@@ -61,7 +69,7 @@ pipeline {
             }
         }
 
-        stage('5. Tag Docker Image') {
+        stage('6. Tag Docker Image') {
             steps {
                 sh """
                     docker tag $IMAGE_NAME:$BUILD_NUMBER $ECR_REPO:$BUILD_NUMBER
@@ -69,7 +77,7 @@ pipeline {
             }
         }
 
-        stage('6. Push Image to ECR') {
+        stage('7. Push Image to ECR') {
             steps {
                 sh """
                     docker push $ECR_REPO:$BUILD_NUMBER
@@ -77,7 +85,7 @@ pipeline {
             }
         }
 
-        stage('7. Pull Image from ECR') {
+        stage('8. Pull Image from ECR') {
             steps {
                 sh """
                     docker pull $ECR_REPO:$BUILD_NUMBER
@@ -85,7 +93,7 @@ pipeline {
             }
         }
 
-        stage('8. Deploy Container') {
+        stage('9. Deploy Container') {
             steps {
                 sh """
                     docker stop java25-container || true
