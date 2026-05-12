@@ -96,7 +96,7 @@ pipeline {
                     docker stop java25-container || true
                     docker rm java25-container || true
 
-                    docker run -d --name java25-container -p 8085:8080 $ECR_REPO:$BUILD_NUMBER
+                    docker run -d --name java25-container -p 8085:8085 $ECR_REPO:$BUILD_NUMBER
                 """
             }
         }
