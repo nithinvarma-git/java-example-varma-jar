@@ -5,6 +5,7 @@ pipeline {
         ACCOUNT_ID = "465853823370"
         AWS_REGION = "eu-north-1"
         IMAGE_NAME = "java25-demo-app"
+        IMAGE_TAG = "${IMAGE_NAME}:${BUILD_NUMBER}"
         ECR_REPO = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
     }
 
@@ -28,7 +29,7 @@ pipeline {
         stage('3. Build Docker Image') {
             steps {
                 sh """
-                    docker build -t $IMAGE_NAME:$BUILD_NUMBER .
+                    docker build -t $IMAGE_TAG .
                 """
             }
         }
@@ -37,19 +38,15 @@ pipeline {
             steps {
                 sh """
                     set -e
-                    echo "Workspace: \$(pwd)"
-                    ls -lah
 
                     mkdir -p trivy-cache
-
-                    IMAGE=$IMAGE_NAME:$BUILD_NUMBER
 
                     trivy image --scanners vuln \
                         --cache-dir trivy-cache \
                         --no-progress \
                         -f table \
                         -o trivy-image-report.txt \
-                        $IMAGE
+                        $IMAGE_TAG
 
                     ls -lah trivy-image-report.txt || true
                 """
@@ -72,7 +69,7 @@ pipeline {
         stage('6. Tag Docker Image') {
             steps {
                 sh """
-                    docker tag $IMAGE_NAME:$BUILD_NUMBER $ECR_REPO:$BUILD_NUMBER
+                    docker tag $IMAGE_TAG $ECR_REPO:$BUILD_NUMBER
                 """
             }
         }
